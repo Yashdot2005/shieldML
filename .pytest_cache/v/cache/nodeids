@@ -1,0 +1,13 @@
+[
+  "tests/test_api.py::test_health_endpoint",
+  "tests/test_api.py::test_metrics_endpoint",
+  "tests/test_api.py::test_predict_endpoint_valid_scoring",
+  "tests/test_api.py::test_predict_endpoint_validation_error",
+  "tests/test_features.py::test_feature_engineering_temporal_leakage_prevention",
+  "tests/test_features.py::test_lightweight_feature_store_lookups",
+  "tests/test_features.py::test_merchant_zscore_fit_on_train_only",
+  "tests/test_latency_benchmark.py::test_api_latency_under_50ms",
+  "tests/test_models.py::test_optimal_f2_threshold_selection",
+  "tests/test_models.py::test_smote_oversampling_resamples_properly",
+  "tests/test_models.py::test_soft_voting_ensemble_probabilities"
+]
