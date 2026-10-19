@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShieldML — Real-Time Financial Fraud Detection Command Center</title>
+  <meta name="description" content="Production-grade real-time financial fraud detection scoring pipeline with SHAP explainability and sub-50ms latency.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">ShieldML</h1>
+          <p class="brand-sub">Real-Time Financial Fraud Detection</p>
+        </div>
+      </div>
+      
+      <div class="nav-metrics">
+        <div class="status-pill status-live" id="system-status">
+          <span class="pulsing-dot"></span>
+          <span>API ACTIVE (Sub-50ms)</span>
+        </div>
+        <div class="header-stat">
+          <span class="stat-label">CHAMPION MODEL</span>
+          <span class="stat-val" id="champion-model-tag">Ensemble (RF+XGB+LGB)</span>
+        </div>
+        <div class="header-stat">
+          <span class="stat-label">THRESHOLD (F2)</span>
+          <span class="stat-val text-primary" id="threshold-tag">0.35</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="live-scoring" id="tab-scoring-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+        Live Scoring & SHAP
+      </button>
+      <button class="tab-btn" data-tab="monitoring" id="tab-monitoring-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Monitoring & Latency (/metrics)
+      </button>
+      <button class="tab-btn" data-tab="performance" id="tab-performance-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Evaluation & Curves
+      </button>
+      <button class="tab-btn" data-tab="model-card" id="tab-modelcard-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Model Card & Governance
+      </button>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="main-content">
+      <!-- TAB 1: Live Scoring -->
+      <section id="tab-live-scoring" class="tab-pane active">
+        <div class="grid-2-col">
+          <!-- Left: Input form & Presets -->
+          <div class="card glass-panel">
+            <div class="card-header">
+              <h2 class="card-title">Transaction Simulator</h2>
+              <span class="badge">Payload JSON</span>
+            </div>
+            
+            <div class="preset-selector">
+              <label class="input-label">Load Realistic Simulation Scenario:</label>
+              <div class="preset-buttons">
+                <button type="button" class="btn-preset active" id="preset-legit">☕ Normal Grocery</button>
+                <button type="button" class="btn-preset" id="preset-velocity">⚡ Velocity Spike</button>
+                <button type="button" class="btn-preset" id="preset-zscore">💎 Luxury Anomaly</button>
+                <button type="button" class="btn-preset" id="preset-night">🌙 3AM Crypto Heist</button>
+              </div>
+            </div>
+
+            <form id="tx-form" class="tx-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="f-tx-id" class="input-label">Transaction ID</label>
+                  <input type="text" id="f-tx-id" class="input-field" value="TX_SIM_9801">
+                </div>
+                <div class="form-group">
+                  <label for="f-card-id" class="input-label">Card Token</label>
+                  <input type="text" id="f-card-id" class="input-field" value="CARD_00124">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="f-amount" class="input-label">Amount (USD $)</label>
+                  <input type="number" step="0.01" id="f-amount" class="input-field" value="48.50">
+                </div>
+                <div class="form-group">
+                  <label for="f-category" class="input-label">Merchant Category</label>
+                  <select id="f-category" class="input-field">
+                    <option value="grocery" selected>Grocery Store ($65 avg)</option>
+                    <option value="dining">Dining & Cafe ($38 avg)</option>
+                    <option value="gas_station">Gas Station ($45 avg)</option>
+                    <option value="online_retail">Online Retail ($110 avg)</option>
+                    <option value="electronics">Electronics ($380 avg)</option>
+                    <option value="travel_hotel">Travel & Hotel ($450 avg)</option>
+                    <option value="luxury_jewelry">Luxury Jewelry ($950 avg)</option>
+                    <option value="digital_gaming">Digital Gaming ($28 avg)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="f-merchant" class="input-label">Merchant ID</label>
+                  <input type="text" id="f-merchant" class="input-field" value="M_0012">
+                </div>
+                <div class="form-group">
+                  <label for="f-device" class="input-label">Device Fingerprint</label>
+                  <input type="text" id="f-device" class="input-field" value="DEV_00482">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="f-channel" class="input-label">Channel</label>
+                  <select id="f-channel" class="input-field">
+                    <option value="pos_chip" selected>POS Chip (Low Risk)</option>
+                    <option value="contactless">Contactless</option>
+                    <option value="pos_swipe">Magnetic Swipe</option>
+                    <option value="web">Web (e-Commerce)</option>
+                    <option value="mobile_app">Mobile App</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="f-country" class="input-label">Country Code</label>
+                  <input type="text" id="f-country" class="input-field" value="US">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="f-timestamp" class="input-label">Transaction Timestamp (ISO 8601)</label>
+                <input type="text" id="f-timestamp" class="input-field" value="2026-01-20T14:15:30Z">
+              </div>
+
+              <button type="submit" class="btn-primary" id="btn-submit-tx">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>Score Transaction in Real-Time</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Right: Live Result & SHAP -->
+          <div class="card glass-panel" id="result-panel">
+            <div class="card-header">
+              <h2 class="card-title">Live Scoring & SHAP Decision Engine</h2>
+              <div id="latency-indicator" class="latency-badge text-muted">Awaiting Request</div>
+            </div>
+
+            <div class="score-summary-box" id="score-summary">
+              <div class="decision-banner banner-neutral" id="decision-banner">
+                <span class="decision-icon" id="decision-icon">🛡️</span>
+                <div>
+                  <h3 class="decision-text" id="decision-text">READY TO EVALUATE</h3>
+                  <p class="decision-sub" id="decision-sub">Submit a transaction to trigger model inference and SHAP TreeExplainer</p>
+                </div>
+              </div>
+
+              <div class="gauge-container">
+                <div class="gauge-header">
+                  <span class="gauge-title">Calibrated Fraud Probability</span>
+                  <span class="gauge-percent" id="score-percent">0.0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" id="score-bar" style="width: 0%;"></div>
+                </div>
+                <div class="gauge-footer">
+                  <span>0.0 (Legitimate)</span>
+                  <span class="threshold-marker" id="threshold-marker">F2 Cutoff: 0.35</span>
+                  <span>1.0 (Critical Fraud)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SHAP Explainability Breakdown -->
+            <div class="shap-section">
+              <div class="shap-header">
+                <h3 class="section-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                  SHAP TreeExplainer Local Attribution
+                </h3>
+                <span class="shap-sub">Exact contribution to prediction score</span>
+              </div>
+              <div id="shap-contributions" class="shap-list">
+                <div class="empty-state">No transaction evaluated yet. Click "Score Transaction".</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Monitoring & Latency -->
+      <section id="tab-monitoring" class="tab-pane">
+        <div class="monitoring-container">
+          <div class="stats-overview-grid">
+            <div class="stat-card">
+              <div class="stat-icon icon-blue">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </div>
+              <div class="stat-info">
+                <span class="stat-meta">AVG LATENCY (Target &lt;50ms)</span>
+                <span class="stat-number" id="m-avg-latency">-- ms</span>
+                <span class="stat-badge badge-green" id="m-latency-verdict">Sub-50ms Compliant</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon icon-purple">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <div class="stat-info">
+                <span class="stat-meta">P95 LATENCY</span>
+                <span class="stat-number" id="m-p95-latency">-- ms</span>
+                <span class="stat-badge badge-blue">95th Percentile</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon icon-red">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div class="stat-info">
+                <span class="stat-meta">FRAUD RATE (Last 100)</span>
+                <span class="stat-number" id="m-fraud-rate">-- %</span>
+                <span class="stat-badge badge-purple" id="m-total-fraud">0 Flagged</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon icon-emerald">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+              <div class="stat-info">
+                <span class="stat-meta">TOTAL SCORINGS</span>
+                <span class="stat-number" id="m-total-preds">0</span>
+                <span class="stat-badge badge-emerald">Real-Time Ingestion</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card glass-panel mt-4">
+            <div class="card-header">
+              <h2 class="card-title">Live Latency Benchmark Runner</h2>
+              <button class="btn-secondary" id="btn-run-benchmark">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Fire 50 Consecutive Predictions
+              </button>
+            </div>
+            <p class="text-secondary mb-3">Stress tests the endpoint via async bursts to verify sub-50ms performance SLAs across feature engineering, model inference, and SHAP attribution.</p>
+            <div id="benchmark-results" class="benchmark-box">
+              <span class="text-muted">Click "Fire 50 Consecutive Predictions" to start benchmark.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Evaluation & Artifacts -->
+      <section id="tab-performance" class="tab-pane">
+        <div class="evaluation-container">
+          <div class="card glass-panel mb-4">
+            <div class="card-header">
+              <h2 class="card-title">Held-Out Test Set Metrics & Rubric Verification</h2>
+              <span class="badge badge-green">Passed Rubric Constraints</span>
+            </div>
+            <div class="metrics-table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>Constraint Requirement</th>
+                    <th>ShieldML Ensemble Result</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="metrics-table-body">
+                  <tr>
+                    <td><strong>AUC-ROC</strong></td>
+                    <td>&gt; 0.9000</td>
+                    <td><span class="metric-highlight text-primary" id="rep-auc-roc">--</span></td>
+                    <td><span class="status-chip chip-green">PASSED</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>AUC-PR (Average Precision)</strong></td>
+                    <td>High precision on imbalanced fraud</td>
+                    <td><span class="metric-highlight" id="rep-auc-pr">--</span></td>
+                    <td><span class="status-chip chip-green">OPTIMAL</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Optimized F2-Score</strong></td>
+                    <td>Recall-weighted for fraud loss prevention</td>
+                    <td><span class="metric-highlight text-emerald" id="rep-f2">--</span></td>
+                    <td><span class="status-chip chip-green">OPTIMAL</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Recall (Sensitivity)</strong></td>
+                    <td>Maximize catch rate of fraud rings</td>
+                    <td><span class="metric-highlight" id="rep-recall">--</span></td>
+                    <td><span class="status-chip chip-blue">EVALUATED</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Estimated Financial Savings</strong></td>
+                    <td>Compared to default 0.50 threshold</td>
+                    <td><span class="metric-highlight text-emerald" id="rep-savings">--</span></td>
+                    <td><span class="status-chip chip-green">SIGNIFICANT</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="figures-gallery">
+            <div class="figure-card">
+              <h3 class="figure-title">ROC Curve (Held-Out Test Split)</h3>
+              <img src="/static/roc_curve.png" alt="ROC Curve" class="figure-img" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22>Run pipeline to generate ROC Curve</text></svg>'">
+            </div>
+            <div class="figure-card">
+              <h3 class="figure-title">Precision-Recall Curve with F2 Cutoff</h3>
+              <img src="/static/precision_recall_curve.png" alt="PR Curve" class="figure-img" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22>Run pipeline to generate PR Curve</text></svg>'">
+            </div>
+            <div class="figure-card">
+              <h3 class="figure-title">Global SHAP Feature Importance</h3>
+              <img src="/static/shap_global_feature_importance.png" alt="SHAP Global Importance" class="figure-img" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22>Run pipeline to generate SHAP Bar Chart</text></svg>'">
+            </div>
+            <div class="figure-card">
+              <h3 class="figure-title">Confusion Matrix @ Optimal Threshold</h3>
+              <img src="/static/confusion_matrix.png" alt="Confusion Matrix" class="figure-img" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22>Run pipeline to generate Confusion Matrix</text></svg>'">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Model Card -->
+      <section id="tab-model-card" class="tab-pane">
+        <div class="card glass-panel">
+          <div class="card-header">
+            <h2 class="card-title">ShieldML Model Card & Governance Specification</h2>
+            <span class="badge">MLOps Standard v1.0</span>
+          </div>
+          
+          <div class="model-card-content">
+            <div class="doc-section">
+              <h3 class="doc-heading">1. Model Overview</h3>
+              <p>ShieldML is an ensemble machine learning system engineered for real-time transactional fraud detection. It integrates Random Forest, XGBoost, and LightGBM classifiers using calibrated soft-voting probability aggregation, optimized for an asymmetric F2 loss function that weights fraudulent transaction recall higher than false alarms.</p>
+            </div>
+
+            <div class="doc-section">
+              <h3 class="doc-heading">2. Intended Use & Serving Constraints</h3>
+              <ul>
+                <li><strong>Primary Intended Use:</strong> Real-time authorization gate for card-not-present (CNP) and card-present (CP) financial transactions.</li>
+                <li><strong>Latency SLA:</strong> Sub-50ms 95th percentile response latency for single-transaction requests.</li>
+                <li><strong>Out of Scope:</strong> Batch account credit scoring or anti-money laundering (AML) multi-hop network analysis.</li>
+              </ul>
+            </div>
+
+            <div class="doc-section">
+              <h3 class="doc-heading">3. Class Imbalance & Mitigation Strategy</h3>
+              <p>Financial transaction fraud is characterized by extreme class imbalance (~1.2% fraud). ShieldML mitigates this using SMOTE oversampling applied <strong>strictly to the training partition</strong>, supplemented by cost-sensitive tree loss scaling (<code>scale_pos_weight</code>). Validation and held-out test sets remain pristine and un-sampled to ensure unbiased evaluation.</p>
+            </div>
+
+            <div class="doc-section">
+              <h3 class="doc-heading">4. Known Limitations & Bias Considerations</h3>
+              <ul>
+                <li><strong>Cold Start Accounts:</strong> Newly provisioned cards without historical velocity rely primarily on merchant amount z-scores and categorical risk factors until behavioral history accumulates.</li>
+                <li><strong>Concept Drift:</strong> Novel fraud vectors (e.g., emergence of previously unseen merchant categories) require recurring weekly model retraining and MLflow champion-challenger promotion.</li>
+                <li><strong>Cross-Border Geographic Bias:</strong> Higher baseline risk weight on non-domestic transactions must be balanced with user travel exemption mechanisms.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

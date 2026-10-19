@@ -1,0 +1,13 @@
+{
+  "n_requests": 100,
+  "average_latency_ms": 34.71,
+  "p50_latency_ms": 33.68,
+  "p90_latency_ms": 38.01,
+  "p95_latency_ms": 40.71,
+  "p99_latency_ms": 46.95,
+  "min_latency_ms": 30.44,
+  "max_latency_ms": 58.22,
+  "std_latency_ms": 3.82,
+  "sla_target_ms": 50.0,
+  "sla_passed": true
+}
