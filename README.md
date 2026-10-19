@@ -44,28 +44,75 @@ A production-grade machine learning system designed to detect fraudulent financi
 
 ## 🏗️ System Architecture
 
+The system uses a time-aware machine learning pipeline to train, evaluate, calibrate, and deploy a transaction prediction model. It combines Random Forest, XGBoost, and LightGBM using a soft-voting ensemble and serves predictions through FastAPI.
+
+### Architecture Diagram
+
 ```mermaid
-graph TD
-    A[Raw Transactions CSV] --> B[Schema Validation & Chronological Sort]
-    B --> C[Time-Based Partitioning<br/>Train: 70% | Val: 15% | Test: 15%]
-    C --> D[Feature Engineer<br/>Fit on Train Only]
-    D --> E[SMOTE Oversampling<br/>Train Only]
-    E --> F1[Random Forest + GridSearchCV]
-    D --> F2[XGBoost + Optuna Tuning]
-    D --> F3[LightGBM + Optuna Tuning]
-    F1 & F2 & F3 --> G[Soft-Voting Ensemble]
-    G --> H[CalibratedClassifierCV<br/>Platt Sigmoid]
-    H --> I[F2 Threshold Optimization]
-    I --> J[SHAP TreeExplainer]
-    H --> K[MLflow Registry: Champion Model]
-    
-    L[Live Request] --> M[FastAPI /predict]
-    M --> N[Feature Store: <1ms Velocity]
-    M --> O[Champion Ensemble]
-    O --> P[Prediction JSON + SHAP]
+flowchart TD
+    A["Raw Transactions CSV"] --> B["Schema Validation & Chronological Sort"]
+    B --> C["Time-Based Partitioning<br/>Train: 70% | Val: 15% | Test: 15%"]
+    C --> D["Feature Engineering<br/>Fit on Train Only"]
+
+    D --> E["SMOTE Oversampling<br/>Train Only"]
+    E --> F1["Random Forest<br/>GridSearchCV"]
+
+    D --> F2["XGBoost<br/>Optuna Tuning"]
+    D --> F3["LightGBM<br/>Optuna Tuning"]
+
+    F1 --> G["Soft-Voting Ensemble"]
+    F2 --> G
+    F3 --> G
+
+    G --> H["CalibratedClassifierCV<br/>Platt Sigmoid"]
+    H --> I["F2 Threshold Optimization"]
+    I --> J["SHAP TreeExplainer"]
+    H --> K["MLflow Registry<br/>Champion Model"]
+
+    L["Live Request"] --> M["FastAPI /predict"]
+    M --> N["Feature Store<br/>Velocity Features (<1 ms target)"]
+    N --> O["Champion Ensemble"]
+    O --> P["Prediction JSON + SHAP Explanation"]
+
+    classDef input fill:#e8f1ff,stroke:#2563eb,color:#111827
+    classDef processing fill:#e6fffa,stroke:#0f766e,color:#111827
+    classDef training fill:#fff3df,stroke:#d97706,color:#111827
+    classDef serving fill:#f3e8ff,stroke:#7e22ce,color:#111827
+
+    class A,L input
+    class B,C,D,N processing
+    class E,F1,F2,F3,G,H,I,J,K training
+    class M,O,P serving
 ```
 
----
+### Workflow Explanation
+
+1. **Data Validation:** Loads transaction data, validates the schema, and sorts records chronologically.
+2. **Time-Based Partitioning:** Splits the dataset into training (70%), validation (15%), and testing (15%) sets to reduce temporal data leakage.
+3. **Feature Engineering:** Extracts relevant transaction features, fitting preprocessing steps on training data only.
+4. **SMOTE Oversampling:** Balances minority classes using only the training data.
+5. **Model Training:** Trains Random Forest with GridSearchCV and XGBoost and LightGBM with Optuna hyperparameter tuning.
+6. **Ensemble Learning:** Combines the three models through soft voting to produce a unified prediction.
+7. **Probability Calibration:** Applies sigmoid calibration using `CalibratedClassifierCV`.
+8. **Threshold Optimization:** Selects a decision threshold based on the F2 score, prioritizing recall over precision.
+9. **Explainability:** Uses SHAP TreeExplainer to explain model predictions.
+10. **Model Registry:** Registers and manages the selected champion model through MLflow.
+11. **Real-Time Inference:** FastAPI receives live requests, obtains the required features, and returns prediction results with explanations.
+
+### Key Technologies
+
+| Component | Technology |
+|---|---|
+| Data processing | Pandas, NumPy |
+| Class balancing | imbalanced-learn (SMOTE) |
+| Machine learning | Scikit-learn, XGBoost, LightGBM |
+| Hyperparameter tuning | GridSearchCV, Optuna |
+| Model explainability | SHAP |
+| Model management | MLflow |
+| API deployment | FastAPI |
+
+**Important:** Apply the same fitted feature transformations during inference as during training. Fit SMOTE only on training data. Ensure the deployed ensemble and threshold match the registered champion model. The velocity feature store's `<1 ms` value is a performance target, not a guaranteed latency measurement.
+##
 
 ## 📁 Repository Structure
 
