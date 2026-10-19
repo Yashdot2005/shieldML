@@ -1,0 +1,27 @@
+{
+  "auc_roc": 0.9999,
+  "auc_pr": 0.9906,
+  "optimal_threshold": 0.02,
+  "optimized_metrics": {
+    "f2_score": 0.9584,
+    "precision": 0.8925,
+    "recall": 0.9765,
+    "tn": 8905,
+    "fp": 10,
+    "fn": 2,
+    "tp": 83,
+    "expected_financial_loss_usd": 725.0
+  },
+  "default_metrics_0_5": {
+    "f2_score": 0.9529,
+    "precision": 0.9529,
+    "recall": 0.9529,
+    "tn": 8911,
+    "fp": 4,
+    "fn": 4,
+    "tp": 81,
+    "expected_financial_loss_usd": 1410.0
+  },
+  "financial_savings_usd": 685.0,
+  "run_id": "ff0c7305afa64dffb7ae9445d6e3e6cb"
+}
